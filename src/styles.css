@@ -1,0 +1,126 @@
+:root {
+  --bg: #0d0e10;
+  --surface-2: #15171a;
+  --surface-3: #1e2125;
+  --line: #22252a;
+  --line-strong: #353940;
+  --text: #ece8e1;
+  --muted: #8b8f96;
+  --warn: #e8a33d;
+  --danger: #e5484d;
+  --accent: #4fd1c5;
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: Inter, system-ui, sans-serif;
+  font-size: 14px;
+  -webkit-font-smoothing: antialiased;
+}
+
+.muted {
+  color: var(--muted);
+}
+
+input,
+textarea,
+select {
+  font: inherit;
+  color: var(--text);
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 8px 10px;
+  width: 100%;
+}
+input:focus,
+textarea:focus,
+select:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+textarea {
+  resize: vertical;
+  line-height: 1.5;
+}
+input[type='range'] {
+  padding: 0;
+  border: 0;
+  background: none;
+  accent-color: var(--accent);
+}
+
+.field {
+  display: grid;
+  gap: 6px;
+}
+.field .label {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12.5px;
+  font-weight: 500;
+}
+.field .label em {
+  font-style: normal;
+  color: var(--muted);
+  font-weight: 400;
+}
+.field .label em.over {
+  color: var(--warn);
+  font-weight: 600;
+}
+.field.slider {
+  gap: 2px;
+}
+
+code {
+  font-size: 12px;
+  background: var(--surface-3);
+  padding: 1px 5px;
+  border-radius: 4px;
+}
+
+.btn {
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text);
+  background: var(--surface-3);
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  padding: 8px 12px;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+.btn:hover:not(:disabled) {
+  border-color: var(--muted);
+}
+.btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+.btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.btn.icon {
+  padding: 6px 0;
+}
+.btn.danger:hover:not(:disabled) {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+.btn.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #06100f;
+  font-weight: 600;
+}

@@ -42,16 +42,18 @@ export async function resultToImage(result) {
   }
 }
 
-export function generatePost({ topic, category, model }) {
-  return post('/api/generate', { topic, category, model })
+export function generatePost({ topic, category, length, model, provider, effort }) {
+  return post('/api/generate', { topic, category, length, model, provider, effort })
 }
 
-export function regenerateSlide({ topic, slides, index, instruction, model }) {
+export function regenerateSlide({ topic, slides, index, instruction, model, provider, effort }) {
   return post('/api/regenerate-slide', {
     topic,
     index,
     instruction,
     model,
+    provider,
+    effort,
     slides: slides.map(({ type, kicker, headline, body }) => ({ type, kicker, headline, body })),
   })
 }

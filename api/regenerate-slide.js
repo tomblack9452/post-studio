@@ -1,13 +1,13 @@
 import { generateJson } from './_lib/claude.js'
 import { fail, json } from './_lib/http.js'
 import { normalizeSlide, slideWarnings } from './_lib/normalize.js'
-import { SLIDE_SCHEMA, slideRequest } from './_lib/prompts.js'
+import { MAX_SLIDES, SLIDE_SCHEMA, slideRequest } from './_lib/prompts.js'
 
-// POST /api/regenerate-slide  { topic, slides: [{type,kicker,headline,body}], index, instruction? }
+// POST /api/regenerate-slide  { topic, slides: [{type,kicker,headline,body}], index, instruction?, model?, provider?, effort? }
 export async function POST(request) {
   const body = await request.json().catch(() => ({}))
   const topic = String(body.topic || '').trim().slice(0, 200)
-  const slides = Array.isArray(body.slides) ? body.slides.slice(0, 10) : []
+  const slides = Array.isArray(body.slides) ? body.slides.slice(0, MAX_SLIDES) : []
   const index = Number(body.index)
   const instruction = String(body.instruction || '').trim().slice(0, 300)
   if (!topic) return fail('The post has no topic')
@@ -26,6 +26,8 @@ export async function POST(request) {
       schema: SLIDE_SCHEMA,
       maxTokens: 1000,
       model: body.model,
+      provider: body.provider,
+      effort: body.effort,
     })
     const slide = normalizeSlide(data.slide, clean[index].type)
     slide.type = clean[index].type // never let a rewrite change the slide's role

@@ -1,4 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk'
+import { generateJsonViaCli } from './claudeCli.js'
 import { HttpError } from './http.js'
 import { SYSTEM_PROMPT } from './prompts.js'
 
@@ -9,8 +10,25 @@ const DEFAULT_MODEL = 'claude-sonnet-5'
 // Models the app may request per post (anything else falls back to the default).
 export const ALLOWED_MODELS = ['claude-haiku-4-5', 'claude-sonnet-5']
 
-function pickModel(requested) {
-  if (ALLOWED_MODELS.includes(requested)) return requested
+// Claude Pro (CLI) runs on the subscription, so every current model is offered there.
+export const PRO_MODELS = [
+  'claude-opus-5-5',
+  'claude-sonnet-5',
+  'claude-fable-5-1',
+  'claude-haiku-4-5',
+  'claude-opus-5',
+  'claude-fable-5',
+  'claude-opus-4-8',
+  'claude-opus-4-7',
+  'claude-opus-4-6',
+  'claude-sonnet-4-6',
+]
+
+// Faster -> smarter. Only used by the Claude Pro path; the API path keeps thinking off.
+export const EFFORTS = ['low', 'medium', 'high', 'xhigh', 'max']
+
+function pickModel(requested, provider) {
+  if ((provider === 'pro' ? PRO_MODELS : ALLOWED_MODELS).includes(requested)) return requested
   return process.env.ANTHROPIC_MODEL || DEFAULT_MODEL
 }
 
@@ -30,9 +48,22 @@ function getClient() {
   return client
 }
 
-/** One structured-output call. Returns the parsed JSON plus token usage. */
-export async function generateJson({ user, schema, maxTokens = 6000, model: requested }) {
-  const model = pickModel(requested)
+/**
+ * One structured-output call. Returns the parsed JSON plus token usage.
+ * provider 'pro' runs it through the local Claude CLI (Claude Pro subscription) instead of the API key.
+ */
+export async function generateJson({ user, schema, maxTokens = 6000, model: requested, provider, effort }) {
+  const model = pickModel(requested, provider)
+  if (provider === 'pro') {
+    return generateJsonViaCli({
+      user,
+      system: SYSTEM_PROMPT,
+      schema,
+      model,
+      effort: EFFORTS.includes(effort) ? effort : 'low',
+    })
+  }
+
   let response
   try {
     response = await getClient().messages.create({
@@ -68,6 +99,7 @@ export async function generateJson({ user, schema, maxTokens = 6000, model: requ
     data: JSON.parse(text),
     usage: {
       model,
+      provider: 'api',
       inputTokens,
       outputTokens,
       costUsd: price ? (inputTokens * price[0] + outputTokens * price[1]) / 1e6 : null,

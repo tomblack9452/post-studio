@@ -7,6 +7,7 @@ export const CATEGORY_LABELS = {
   unsolved: 'Unsolved mysteries',
   space: 'Space',
   history: 'Weird history',
+  experiments: 'Strange experiments',
 }
 
 const list = {
@@ -21,6 +22,16 @@ const list = {
     'The Myrtles Plantation',
     "Edinburgh's South Bridge Vaults",
     'The Tower of London ghost stories',
+    'The Tulip Staircase ghost photograph, Greenwich 1966',
+    'The Hampton Court Palace "Skeletor" CCTV footage, 2003',
+    'The Queen Mary ocean liner hauntings',
+    'The Stanley Hotel, Colorado',
+    'The Ancient Ram Inn, Gloucestershire',
+    'The Cecil Hotel, Los Angeles',
+    'The Hammersmith Ghost murder case, 1804',
+    'The Cock Lane ghost, London 1762',
+    'The Greenbrier Ghost trial, West Virginia 1897',
+    'Pluckley, "the most haunted village in England"',
   ],
   supernatural: [
     'The Bell Witch of Tennessee',
@@ -33,6 +44,16 @@ const list = {
     'The Black Dog of Bungay, 1577',
     'The Mad Gasser of Mattoon',
     'The Philadelphia Experiment legend',
+    'The Pendle witch trials, 1612',
+    'The Salem witch trials and the ergot poisoning theory',
+    'The Loudun possessions, 1634',
+    'The Kelly-Hopkinsville "goblin" encounter, 1955',
+    'The Westall UFO sighting, Melbourne 1966',
+    'The Dover Demon, 1977',
+    'The Cottingley Fairies photographs',
+    'The "Miracle of the Sun" at Fátima, 1917',
+    'The Min Min lights of outback Australia',
+    'The Brown Mountain lights, North Carolina',
   ],
   cryptids: [
     'The Loch Ness Monster and the Surgeon\'s Photograph',
@@ -45,6 +66,16 @@ const list = {
     'Thylacine sightings after extinction',
     'The Flatwoods Monster',
     'The Owlman of Mawnan',
+    'The Beast of Gévaudan, 1764 to 1767',
+    'The Beast of Bodmin Moor',
+    'The Montauk Monster, 2008',
+    "P. T. Barnum's Fiji mermaid",
+    'The kraken legend and the first giant squid caught on camera',
+    'The coelacanth, the "extinct" fish found alive in 1938',
+    'The Loveland Frog, Ohio 1972',
+    'The Beast of Bray Road, Wisconsin',
+    'The Orang Pendek of Sumatra',
+    'Ogopogo of Okanagan Lake',
   ],
   unsolved: [
     'Dyatlov Pass incident',
@@ -59,6 +90,16 @@ const list = {
     'The lost colony of Roanoke',
     'The Sodder children disappearance',
     'The Hinterkaifeck farm murders',
+    'The vanished lighthouse keepers of the Flannan Isles, 1900',
+    "The Zodiac Killer's 340 cipher, cracked in 2020",
+    'Kryptos, the unsolved sculpture at CIA headquarters',
+    'The Beale ciphers and the buried treasure',
+    'The Yuba County Five, 1978',
+    'The Carroll A. Deering ghost ship, 1921',
+    'The Bennington Triangle disappearances, Vermont',
+    'The Phaistos Disc',
+    'The Hum heard in Taos and Bristol',
+    'The Bloop, the unexplained ocean sound of 1997',
   ],
   space: [
     'Wow! signal',
@@ -73,6 +114,16 @@ const list = {
     'Odd radio circles (ORCs)',
     'The Black Knight satellite myth',
     'Lunar transient phenomena',
+    "Apollo 10's lost lunar module Snoopy, still orbiting the Sun",
+    'Radio source SHGb02+14a',
+    'BLC1, the signal that seemed to come from Proxima Centauri',
+    'The Pioneer anomaly',
+    'Phosphine in the clouds of Venus',
+    'Long-period radio transients that pulse every few minutes',
+    'The Methuselah star, apparently older than the universe',
+    `The "mystery hut" spotted by China's Yutu-2 rover`,
+    'Kosmos 482, the Soviet Venus probe that fell back to Earth in 2025',
+    'Dark flow, the galaxy clusters drifting in one direction',
   ],
   history: [
     'Tunguska event',
@@ -85,6 +136,26 @@ const list = {
     'The Antikythera mechanism',
     'The Great Molasses Flood',
     'The Radium Girls',
+    'Mary Toft, the woman who "gave birth" to rabbits, 1726',
+    'The Cadaver Synod, when a dead pope was put on trial in 897',
+    'The Pied Piper of Hamelin and the lost children of 1284',
+    'Burke and Hare and the Edinburgh body trade, 1828',
+    'The Halifax Slasher panic, 1938',
+    'The Phantom Barber of Pascagoula, 1942',
+    "The curse of Tutankhamun's tomb",
+  ],
+  experiments: [
+    `Duncan MacDougall's "21 grams" soul-weighing experiment, 1907`,
+    "Giovanni Aldini's electrified corpse of George Forster, 1803",
+    "Robert Cornish's attempts to bring dead dogs back to life, 1930s",
+    "Vladimir Demikhov's two-headed dogs, 1954",
+    'Project Stargate, the US Army psychic spy programme',
+    "MKUltra, the CIA's mind-control programme",
+    "Milgram's obedience experiments, 1961",
+    "Harry Harlow's monkey isolation experiments",
+    'The Stanford Prison Experiment and what later critics found',
+    'The Monster Study, Iowa 1939',
+    'The Russian Sleep Experiment, and how a creepypasta became "history"',
   ],
 }
 
@@ -92,7 +163,15 @@ export const TOPICS = Object.entries(list).flatMap(([category, titles]) =>
   titles.map((title) => ({ title, category })),
 )
 
-export function randomTopic(exclude = '') {
-  const pool = TOPICS.filter((t) => t.title !== exclude)
+/**
+ * Picks a random topic, optionally only from one category.
+ * Skips `exclude` (the current topic) and anything in `used` (topics already drafted)
+ * until that category runs out, then allows repeats.
+ */
+export function randomTopic({ exclude = '', category = '', used = [] } = {}) {
+  const usedSet = new Set(used.map((t) => t.toLowerCase()))
+  const inCategory = TOPICS.filter((t) => (!category || t.category === category) && t.title !== exclude)
+  const fresh = inCategory.filter((t) => !usedSet.has(t.title.toLowerCase()))
+  const pool = fresh.length ? fresh : inCategory
   return pool[Math.floor(Math.random() * pool.length)]
 }

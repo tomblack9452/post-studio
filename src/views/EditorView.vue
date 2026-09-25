@@ -4,12 +4,12 @@ import { draft, library, setStatus, settings, ui } from '../store'
 import { exportIssues, exportPostZip, exportSinglePng } from '../services/exporter'
 import { draftWarnings } from '../services/validate'
 import CaptionPanel from '../components/CaptionPanel.vue'
+import DesignPanel from '../components/DesignPanel.vue'
 import SlideCanvas from '../components/SlideCanvas.vue'
 import SlideEditor from '../components/SlideEditor.vue'
 import SlideStrip from '../components/SlideStrip.vue'
 
 const selected = ref(0)
-const tab = ref('slide')
 const slide = computed(() => draft.slides[selected.value])
 const postWarnings = computed(() => draftWarnings(draft))
 
@@ -51,7 +51,7 @@ watch(
   () => draft.id,
   () => {
     selected.value = 0
-    tab.value = 'slide'
+    if (ui.panel === 'caption') ui.panel = 'slide'
   },
 )
 </script>
@@ -101,7 +101,7 @@ watch(
         {{ [...postWarnings, ...ui.warnings].join(' · ') }}
       </p>
       <p v-if="ui.lastUsage" class="usage muted">
-        Last AI call: {{ ui.lastUsage.model }} · {{ ui.lastUsage.inputTokens.toLocaleString() }} in /
+        Last AI call: {{ ui.lastUsage.model }}{{ ui.lastUsage.provider === 'pro' ? ` via Claude Pro (${ui.lastUsage.effort || 'low'} effort)` : '' }} · {{ ui.lastUsage.inputTokens.toLocaleString() }} in /
         {{ ui.lastUsage.outputTokens.toLocaleString() }} out
         <template v-if="ui.lastUsage.costUsd != null"> · ≈ ${{ ui.lastUsage.costUsd.toFixed(4) }}</template>
       </p>
@@ -109,14 +109,16 @@ watch(
 
     <aside class="panel">
       <nav class="tabs">
-        <button :class="{ on: tab === 'slide' }" @click="tab = 'slide'">Slide</button>
-        <button :class="{ on: tab === 'caption' }" @click="tab = 'caption'">
+        <button :class="{ on: ui.panel === 'slide' }" @click="ui.panel = 'slide'">Slide</button>
+        <button :class="{ on: ui.panel === 'design' }" @click="ui.panel = 'design'">Design</button>
+        <button :class="{ on: ui.panel === 'caption' }" @click="ui.panel = 'caption'">
           Caption & tags
           <span v-if="draft.factCheck?.length" class="dot" title="Has facts to check" />
         </button>
       </nav>
-      <SlideEditor v-if="tab === 'slide' && slide" :slide="slide" :index="selected" />
-      <CaptionPanel v-else-if="tab === 'caption'" />
+      <SlideEditor v-if="ui.panel === 'slide' && slide" :slide="slide" :index="selected" />
+      <DesignPanel v-else-if="ui.panel === 'design' && slide" :slide="slide" :index="selected" />
+      <CaptionPanel v-else-if="ui.panel === 'caption'" />
     </aside>
   </main>
 </template>
@@ -181,7 +183,7 @@ watch(
 .status.posted {
   background: var(--accent);
   border-color: var(--accent);
-  color: #0b0c0d;
+  color: var(--on-accent);
   font-weight: 600;
 }
 .actions .btn {

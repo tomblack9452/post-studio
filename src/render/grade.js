@@ -1,4 +1,3 @@
-import { BRAND } from '../config/brand'
 import { mulberry32 } from './rng'
 
 // Graded photos are cached so typing in the editor doesn't redo pixel work.
@@ -16,12 +15,13 @@ function imageKey(img) {
  * Returns a canvas of size w x h containing `img` cover-fitted,
  * desaturated, contrast-graded, tinted and vignetted.
  * crop: { focusX, focusY, zoom } - focus 0..1 picks which part of the image stays in frame.
+ * grade: BRAND.grade merged with the post style's overrides, plus shadowTint [r, g, b].
  */
-export function gradedPhoto(img, w, h, crop = {}) {
+export function gradedPhoto(img, w, h, crop = {}, grade) {
   const fx = crop.focusX ?? 0.5
   const fy = crop.focusY ?? 0.5
   const zoom = crop.zoom ?? 1
-  const key = `${imageKey(img)}|${w}x${h}|${fx}|${fy}|${zoom}`
+  const key = `${imageKey(img)}|${w}x${h}|${fx}|${fy}|${zoom}|${JSON.stringify(grade)}`
   const hit = cache.get(key)
   if (hit) return hit
 
@@ -39,11 +39,12 @@ export function gradedPhoto(img, w, h, crop = {}) {
 
   try {
     const data = ctx.getImageData(0, 0, w, h)
-    colourGrade(data.data)
+    colourGrade(data.data, grade)
+    if (grade.rgbShift) rgbShift(data, grade.rgbShift)
     ctx.putImageData(data, 0, 0)
   } catch {
     // Canvas is tainted (cross-origin image without CORS). Fall back to CSS filters.
-    const g = BRAND.grade
+    const g = grade
     const tmp = document.createElement('canvas')
     tmp.width = w
     tmp.height = h
@@ -54,15 +55,15 @@ export function gradedPhoto(img, w, h, crop = {}) {
     ctx.drawImage(tmp, 0, 0)
   }
 
-  drawVignette(ctx, w, h, BRAND.grade.vignette)
+  drawVignette(ctx, w, h, grade.vignette)
 
   cache.set(key, c)
   if (cache.size > CACHE_MAX) cache.delete(cache.keys().next().value)
   return c
 }
 
-function colourGrade(px) {
-  const { saturation, contrast, brightness, blackLift, shadowTint, tintStrength } = BRAND.grade
+function colourGrade(px, grade) {
+  const { saturation, contrast, brightness, blackLift, shadowTint, tintStrength } = grade
   const [tr, tg, tb] = shadowTint
   const lift = blackLift / 255
   for (let i = 0; i < px.length; i += 4) {
@@ -91,6 +92,19 @@ function colourGrade(px) {
     px[i] = (r * (1 - t) + (tr / 255) * t) * 255
     px[i + 1] = (g * (1 - t) + (tg / 255) * t) * 255
     px[i + 2] = (b * (1 - t) + (tb / 255) * t) * 255
+  }
+}
+
+// Camcorder colour bleed: red pulled left, blue pushed right.
+function rgbShift({ data, width, height }, shift) {
+  const src = new Uint8ClampedArray(data)
+  for (let y = 0; y < height; y++) {
+    const row = y * width
+    for (let x = 0; x < width; x++) {
+      const i = (row + x) * 4
+      data[i] = src[(row + Math.min(width - 1, x + shift)) * 4]
+      data[i + 2] = src[(row + Math.max(0, x - shift)) * 4 + 2]
+    }
   }
 }
 

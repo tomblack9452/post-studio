@@ -1,5 +1,7 @@
 import { reactive, watch } from 'vue'
-import { DEFAULT_SETTINGS, SETTINGS_VERSION } from './config/brand'
+import { DEFAULT_SETTINGS, MAX_SLIDES, SETTINGS_VERSION } from './config/brand'
+import { POST_STYLES } from './config/styles'
+import { sameColours, THEME_PRESETS, themeColours } from './config/themes'
 import { demoDraft } from './data/demoDraft'
 import { generatePost, regenerateSlide as apiRegenerateSlide } from './services/api'
 import { fillSlideImages } from './services/autoImages'
@@ -11,9 +13,42 @@ import { makeThumbnail } from './services/thumbnail'
 const SETTINGS_KEY = 'post-studio.settings'
 const LAST_OPEN_KEY = 'post-studio.lastOpen'
 
+// Where AI calls go: the paid API key in .env, or the Claude CLI logged in with a Claude Pro plan.
+export const PROVIDERS = {
+  api: 'API key',
+  pro: 'Claude Pro',
+}
+
+// `api` = offered on the API key (with a rough cost); every model is offered on Claude Pro.
+// `more` = listed under "More models". `credits` = needs usage credits on a Pro plan.
 export const MODELS = {
-  'claude-sonnet-5': 'Sonnet 5 · accurate (~2¢/post)',
-  'claude-haiku-4-5': 'Haiku 4.5 · cheapest (~1¢/post)',
+  'claude-opus-5-5': { name: 'Opus 5.5', note: 'Most capable Opus' },
+  'claude-sonnet-5': { name: 'Sonnet 5', note: 'Fast and accurate', api: '~2¢/post' },
+  'claude-fable-5-1': { name: 'Fable 5.1', note: 'Most capable, slowest', credits: true },
+  'claude-haiku-4-5': { name: 'Haiku 4.5', note: 'Fastest, less accurate', api: '~1¢/post' },
+  'claude-opus-5': { name: 'Opus 5', more: true },
+  'claude-fable-5': { name: 'Fable 5', more: true, credits: true },
+  'claude-opus-4-8': { name: 'Opus 4.8', more: true },
+  'claude-opus-4-7': { name: 'Opus 4.7', more: true },
+  'claude-opus-4-6': { name: 'Opus 4.6', more: true },
+  'claude-sonnet-4-6': { name: 'Sonnet 4.6', more: true },
+}
+
+// How many slides to ask for. Instagram allows up to 20.
+export const LENGTHS = {
+  auto: { name: 'Auto', range: '5–20' },
+  short: { name: 'Short', range: '5–8' },
+  medium: { name: 'Medium', range: '9–12' },
+  long: { name: 'Long', range: '13–20' },
+}
+
+// Faster -> smarter, for Claude Pro. Higher levels think longer and use more of the plan's limit.
+export const EFFORTS = {
+  low: 'Low',
+  medium: 'Medium',
+  high: 'High',
+  xhigh: 'Extra high',
+  max: 'Max',
 }
 
 // ------------------------------------------------------------------ settings
@@ -24,14 +59,86 @@ function loadSettings() {
     const saved = JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}')
     // v2: default model changed from Haiku to Sonnet 5.
     if ((saved.version || 1) < 2) delete saved.model
-    return { ...defaults, ...saved, version: SETTINGS_VERSION }
+    // v3: the three accent swatches became full colour schemes.
+    if ((saved.version || 1) < 3 && saved.accent) {
+      const id = { cyan: 'phosphor', red: 'signal', amber: 'sodium' }[saved.accent] || 'phosphor'
+      saved.themeId = id
+      saved.theme = themeColours(THEME_PRESETS[id])
+      delete saved.accent
+    }
+    const merged = { ...defaults, ...saved, version: SETTINGS_VERSION }
+    merged.theme = themeColours(merged.theme)
+    if (!Array.isArray(merged.customThemes)) merged.customThemes = []
+    if (!POST_STYLES[merged.style]) merged.style = defaults.style
+    return merged
   } catch {
     return defaults
   }
 }
 
 export const settings = reactive(loadSettings())
+safeLocalSet(SETTINGS_KEY, JSON.stringify(settings)) // store any migration straight away
 watch(settings, (v) => safeLocalSet(SETTINGS_KEY, JSON.stringify(v)), { deep: true })
+
+// ------------------------------------------------------------------ colour schemes
+
+/** Every scheme to pick from: presets first, then saved ones. */
+export function allThemes() {
+  return [
+    ...Object.entries(THEME_PRESETS).map(([id, t]) => ({ id, preset: true, ...t })),
+    ...settings.customThemes.map((t) => ({ ...t, preset: false })),
+  ]
+}
+
+export function findTheme(id) {
+  return allThemes().find((t) => t.id === id)
+}
+
+export function applyTheme(id) {
+  const t = findTheme(id)
+  if (!t) return
+  settings.theme = themeColours(t)
+  settings.themeId = id
+}
+
+/** True when the colours in use no longer match the scheme they were picked from. */
+export function themeModified() {
+  const t = findTheme(settings.themeId)
+  return !t || !sameColours(t, settings.theme)
+}
+
+export function saveThemeAs(name) {
+  const t = { id: `custom-${uid()}`, name: name.trim().slice(0, 40) || 'My scheme', ...themeColours(settings.theme) }
+  settings.customThemes.push(t)
+  settings.themeId = t.id
+  return t
+}
+
+/** Overwrites the saved scheme currently in use with the current colours. */
+export function updateTheme() {
+  const t = settings.customThemes.find((x) => x.id === settings.themeId)
+  if (t) Object.assign(t, themeColours(settings.theme))
+}
+
+export function renameTheme(id, name) {
+  const t = settings.customThemes.find((x) => x.id === id)
+  if (t && name.trim()) t.name = name.trim().slice(0, 40)
+}
+
+export function deleteTheme(id) {
+  settings.customThemes = settings.customThemes.filter((t) => t.id !== id)
+  // Keep the colours on screen; they just no longer belong to a saved scheme.
+  if (settings.themeId === id) settings.themeId = ''
+}
+
+// ------------------------------------------------------------------ post styles
+
+/** Sets the open post's style, and makes it the default for new posts. */
+export function setPostStyle(id) {
+  if (!POST_STYLES[id]) return
+  draft.style = id
+  settings.style = id
+}
 
 function safeLocalSet(key, value) {
   try {
@@ -49,6 +156,7 @@ export const draft = reactive(demoDraft())
 // Transient UI state.
 export const ui = reactive({
   view: 'editor', // 'editor' | 'drafts'
+  panel: 'slide', // editor side panel: 'slide' | 'design' | 'caption'
   busy: false,
   status: '',
   error: '',
@@ -82,14 +190,15 @@ watch(
   { deep: true },
 )
 
-// The thumbnail shows the accent colour and handle, so refresh it when those change.
+// The thumbnail shows the colour scheme and handle, so refresh it when those change.
 watch(
-  () => [settings.accent, settings.handle],
+  () => [settings.theme, settings.handle],
   () => {
     lastThumbKey = ''
     clearTimeout(saveTimer)
     saveTimer = setTimeout(() => persist({ force: true }), 700)
   },
+  { deep: true },
 )
 
 async function persist({ force = false } = {}) {
@@ -111,7 +220,7 @@ async function persist({ force = false } = {}) {
     const record = plain(draft)
     record.updatedAt = new Date().toISOString()
 
-    const thumbKey = JSON.stringify([record.slides[0], record.slides.length, settings.accent, settings.handle])
+    const thumbKey = JSON.stringify([record.slides[0], record.slides.length, record.style, settings.theme, settings.handle])
     if (thumbKey !== lastThumbKey) {
       lastThumb = await makeThumbnail(record, settings).catch(() => lastThumb)
       lastThumbKey = thumbKey
@@ -210,6 +319,7 @@ export async function newEmptyDraft() {
   loadIntoEditor(
     newDraft({
       topic: 'Untitled post',
+      style: settings.style,
       slides: [newSlide('hook'), newSlide('story'), newSlide('story'), newSlide('story'), newSlide('question')],
     }),
   )
@@ -301,14 +411,22 @@ export async function generate({ topic, category }) {
   ui.busy = true
   ui.error = ''
   ui.warnings = []
-  ui.status = 'Writing slides and caption…'
+  ui.status = settings.provider === 'pro' ? 'Writing slides and caption with Claude Pro (can take a minute or more)…' : 'Writing slides and caption…'
   ui.view = 'editor'
   try {
-    const result = await generatePost({ topic, category, model: settings.model })
+    const result = await generatePost({
+      topic,
+      category,
+      length: settings.length,
+      model: settings.model,
+      provider: settings.provider,
+      effort: settings.effort,
+    })
     loadIntoEditor(
       newDraft({
         topic: result.topic,
         category: result.category,
+        style: settings.style,
         caption: result.caption,
         hashtags: result.hashtags,
         factCheck: result.factCheck,
@@ -339,6 +457,8 @@ export async function regenerateSlide(index, instruction = '') {
     index,
     instruction,
     model: settings.model,
+    provider: settings.provider,
+    effort: settings.effort,
   })
   Object.assign(slide, pickText(result.slide))
   ui.lastUsage = result.usage
@@ -353,12 +473,14 @@ export function pickText(s) {
 // ------------------------------------------------------------------ slide editing
 
 export function addSlide(afterIndex, type = 'story') {
+  if (draft.slides.length >= MAX_SLIDES) return afterIndex
   const slide = newSlide(type)
   draft.slides.splice(afterIndex + 1, 0, slide)
   return afterIndex + 1
 }
 
 export function duplicateSlide(index) {
+  if (draft.slides.length >= MAX_SLIDES) return index
   const copy = plain(draft.slides[index])
   copy.id = uid()
   draft.slides.splice(index + 1, 0, copy)

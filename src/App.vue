@@ -1,16 +1,29 @@
 <script setup>
-import { computed } from 'vue'
-import { ACCENTS } from './config/brand'
+import { computed, watch } from 'vue'
+import { inkOn, uiAccent } from './config/themes'
+import { setFavicon } from './services/favicon'
 import { library, settings, ui } from './store'
 import GenerateBar from './components/GenerateBar.vue'
 import DraftsView from './views/DraftsView.vue'
 import EditorView from './views/EditorView.vue'
 
-const accentHex = computed(() => (ACCENTS[settings.accent] || ACCENTS.cyan).hex)
+const accentHex = computed(() => settings.theme.accent)
+const uiStyle = computed(() => {
+  const accent = uiAccent(accentHex.value)
+  return { '--accent': accent, '--on-accent': inkOn(accent) }
+})
+
+// The tab icon is the logo dot, so it follows the accent colour too.
+watch(accentHex, setFavicon, { immediate: true })
+
+function openDesign() {
+  ui.view = 'editor'
+  ui.panel = 'design'
+}
 </script>
 
 <template>
-  <div class="app" :style="{ '--accent': accentHex }">
+  <div class="app" :style="uiStyle">
     <header class="topbar">
       <div class="brand">
         <span class="mark" />
@@ -24,22 +37,17 @@ const accentHex = computed(() => (ACCENTS[settings.accent] || ACCENTS.cyan).hex)
       </nav>
       <GenerateBar />
       <div class="settings">
+        <button
+          class="scheme"
+          :style="{ '--bg': settings.theme.bg, '--scheme-accent': settings.theme.accent }"
+          title="Colour scheme and post style"
+          aria-label="Colour scheme and post style"
+          @click="openDesign"
+        />
         <label class="inline">
-          <span class="muted">Handle</span>
-          <input v-model.trim="settings.handle" spellcheck="false" />
+          <span class="muted wide-only">Handle</span>
+          <input v-model.trim="settings.handle" spellcheck="false" aria-label="Handle" title="Your Instagram handle" />
         </label>
-        <div class="swatches" role="radiogroup" aria-label="Accent colour">
-          <button
-            v-for="(a, key) in ACCENTS"
-            :key="key"
-            role="radio"
-            :aria-checked="settings.accent === key"
-            :class="{ active: settings.accent === key }"
-            :style="{ '--c': a.hex }"
-            :title="a.name"
-            @click="settings.accent = key"
-          />
-        </div>
       </div>
     </header>
     <EditorView v-if="ui.view === 'editor'" />
@@ -117,27 +125,26 @@ const accentHex = computed(() => (ACCENTS[settings.accent] || ACCENTS.cyan).hex)
   gap: 8px;
   font-size: 13px;
 }
-.inline input {
-  width: 140px;
-  padding: 6px 10px;
-}
-.swatches {
-  display: flex;
-  gap: 8px;
-}
-.swatches button {
+.scheme {
   all: unset;
   cursor: pointer;
-  width: 20px;
-  height: 20px;
+  width: 22px;
+  height: 22px;
   border-radius: 50%;
-  background: var(--c);
-  box-shadow: 0 0 0 2px var(--bg), 0 0 0 3px transparent;
+  background: linear-gradient(135deg, var(--bg) 0 50%, var(--scheme-accent) 50% 100%);
+  box-shadow: 0 0 0 1px var(--line-strong);
 }
-.swatches button.active {
-  box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--c);
+.scheme:hover,
+.scheme:focus-visible {
+  box-shadow: 0 0 0 2px var(--accent);
 }
-.swatches button:focus-visible {
-  box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--text);
+.inline input {
+  width: 120px;
+  padding: 6px 10px;
+}
+@media (max-width: 1360px) {
+  .wide-only {
+    display: none;
+  }
 }
 </style>

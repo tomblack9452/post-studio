@@ -9,6 +9,7 @@
   --warn: #e8a33d;
   --danger: #e5484d;
   --accent: #4fd1c5;
+  --on-accent: #0b0c0d; /* text on accent-filled buttons; set per scheme in App.vue */
   color-scheme: dark;
 }
 
@@ -121,6 +122,6 @@ code {
 .btn.primary {
   background: var(--accent);
   border-color: var(--accent);
-  color: #06100f;
+  color: var(--on-accent);
   font-weight: 600;
 }

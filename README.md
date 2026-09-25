@@ -34,8 +34,12 @@ Wrap words in `*asterisks*` to draw them in the accent colour.
 
 Open the **Design** tab in the editor (or click the colour dot in the header):
 
-- **Post style** (per post): Documentary, Case file, Found footage, Newspaper, Minimal.
-  New posts use the last style you picked. Styles live in `src/config/styles.js`.
+- **Post design** (per post), three independent picks. New posts use your last picks.
+  - **Style** (layout): Classic, Poster, Framed, Polaroid, Lens
+  - **Variation** (overlay and photo look): None, Clear, Case file, Camcorder, Ghost cam, Newspaper, Film strip
+  - **Font**: Condensed, Typewriter, Pixel, Serif, Engraved, Handwritten, Clean
+
+  All three live in `src/config/styles.js`; layouts and overlays are drawn in `src/render/slideRenderer.js`.
 - **Colour scheme** (all posts): 8 presets, or tweak the four colours and save your own.
   Presets live in `src/config/themes.js`.
 

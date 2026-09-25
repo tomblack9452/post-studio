@@ -1,6 +1,6 @@
 <script setup>
 import { computed, ref } from 'vue'
-import { POST_STYLES } from '../config/styles'
+import { FONTS, STYLES, VARIATIONS, resolveDesign } from '../config/styles'
 import { THEME_KEYS, THEME_LABELS, normaliseHex, themeColours } from '../config/themes'
 import {
   allThemes,
@@ -10,7 +10,7 @@ import {
   findTheme,
   renameTheme,
   saveThemeAs,
-  setPostStyle,
+  setDesign,
   settings,
   themeModified,
   updateTheme,
@@ -22,7 +22,7 @@ const props = defineProps({
   index: { type: Number, required: true },
 })
 
-const currentStyle = computed(() => (POST_STYLES[draft.style] ? draft.style : 'documentary'))
+const current = computed(() => resolveDesign(draft))
 
 const presets = computed(() => allThemes().filter((t) => t.preset))
 const saved = computed(() => allThemes().filter((t) => !t.preset))
@@ -72,22 +72,63 @@ function remove(t) {
 <template>
   <div class="design">
     <section class="group">
-      <h3>Post style <em>this post</em></h3>
-      <div class="styles">
+      <h3>Post design <em>this post · new posts use your last picks</em></h3>
+
+      <h4>Style <span class="muted">layout</span></h4>
+      <div class="cards">
         <button
-          v-for="(s, id) in POST_STYLES"
+          v-for="(item, id) in STYLES"
           :key="id"
-          class="style-card"
-          :class="{ on: currentStyle === id }"
-          :aria-pressed="currentStyle === id"
-          @click="setPostStyle(id)"
+          class="card"
+          :class="{ on: current.style === id }"
+          :aria-pressed="current.style === id"
+          @click="setDesign('style', id)"
         >
-          <SlideCanvas :slide="props.slide" :index="props.index" :total="draft.slides.length" :style-id="id" />
-          <span class="style-name">{{ s.name }}</span>
-          <span class="style-hint">{{ s.hint }}</span>
+          <SlideCanvas :slide="props.slide" :index="props.index" :total="draft.slides.length" :design="{ style: id }" />
+          <span class="card-name">{{ item.name }}</span>
+          <span class="card-hint">{{ item.hint }}</span>
         </button>
       </div>
-      <p class="hint">New posts use the last style you picked.</p>
+
+      <h4>Variation <span class="muted">overlay and photo look</span></h4>
+      <div class="cards">
+        <button
+          v-for="(item, id) in VARIATIONS"
+          :key="id"
+          class="card"
+          :class="{ on: current.variation === id }"
+          :aria-pressed="current.variation === id"
+          @click="setDesign('variation', id)"
+        >
+          <SlideCanvas :slide="props.slide" :index="props.index" :total="draft.slides.length" :design="{ variation: id }" />
+          <span class="card-name">{{ item.name }}</span>
+          <span class="card-hint">{{ item.hint }}</span>
+        </button>
+      </div>
+
+      <h4>Font</h4>
+      <div class="fonts">
+        <button
+          v-for="(item, id) in FONTS"
+          :key="id"
+          class="font-card"
+          :class="{ on: current.font === id }"
+          :aria-pressed="current.font === id"
+          @click="setDesign('font', id)"
+        >
+          <span
+            class="font-sample"
+            :style="{
+              fontFamily: `'${item.display.family}'`,
+              fontWeight: item.display.weight,
+              textTransform: item.display.uppercase ? 'uppercase' : 'none',
+            }"
+          >
+            The signal
+          </span>
+          <span class="font-name">{{ item.name }}</span>
+        </button>
+      </div>
     </section>
 
     <section class="group">
@@ -204,13 +245,13 @@ button {
   color: inherit;
 }
 
-/* post styles */
-.styles {
+/* post design */
+.cards {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 10px;
 }
-.style-card {
+.card {
   all: unset;
   box-sizing: border-box;
   cursor: pointer;
@@ -221,27 +262,58 @@ button {
   border: 1px solid var(--line);
   background: var(--surface-2);
 }
-.style-card:hover,
-.style-card:focus-visible {
+.card:hover,
+.card:focus-visible,
+.font-card:hover,
+.font-card:focus-visible {
   border-color: var(--line-strong);
 }
-.style-card.on {
+.card.on,
+.font-card.on {
   border-color: var(--accent);
   box-shadow: 0 0 0 1px var(--accent);
 }
-.style-card :deep(.slide-canvas) {
+.card :deep(.slide-canvas) {
   border-radius: 4px;
   overflow: hidden;
   margin-bottom: 4px;
 }
-.style-name {
+.card-name {
   font-size: 13px;
   font-weight: 600;
 }
-.style-hint {
+.card-hint {
   font-size: 11.5px;
   color: var(--muted);
   line-height: 1.35;
+}
+
+.fonts {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+.font-card {
+  all: unset;
+  box-sizing: border-box;
+  cursor: pointer;
+  display: grid;
+  gap: 2px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+}
+.font-sample {
+  font-size: 24px;
+  line-height: 1.15;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.font-name {
+  font-size: 11.5px;
+  color: var(--muted);
 }
 
 /* colour schemes */

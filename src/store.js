@@ -1,6 +1,6 @@
 import { reactive, watch } from 'vue'
 import { DEFAULT_SETTINGS, MAX_SLIDES, SETTINGS_VERSION } from './config/brand'
-import { POST_STYLES } from './config/styles'
+import { DESIGN_PARTS, resolveDesign } from './config/styles'
 import { sameColours, THEME_PRESETS, themeColours } from './config/themes'
 import { demoDraft } from './data/demoDraft'
 import { generatePost, regenerateSlide as apiRegenerateSlide } from './services/api'
@@ -66,10 +66,12 @@ function loadSettings() {
       saved.theme = themeColours(THEME_PRESETS[id])
       delete saved.accent
     }
+    // v4: the combined post style split into style / variation / font (before defaults fill the gaps).
+    if ((saved.version || 1) < 4 && saved.style) Object.assign(saved, resolveDesign(saved))
     const merged = { ...defaults, ...saved, version: SETTINGS_VERSION }
     merged.theme = themeColours(merged.theme)
     if (!Array.isArray(merged.customThemes)) merged.customThemes = []
-    if (!POST_STYLES[merged.style]) merged.style = defaults.style
+    Object.assign(merged, resolveDesign(merged)) // drop any unknown ids
     return merged
   } catch {
     return defaults
@@ -131,13 +133,22 @@ export function deleteTheme(id) {
   if (settings.themeId === id) settings.themeId = ''
 }
 
-// ------------------------------------------------------------------ post styles
+// ------------------------------------------------------------------ post design
 
-/** Sets the open post's style, and makes it the default for new posts. */
-export function setPostStyle(id) {
-  if (!POST_STYLES[id]) return
-  draft.style = id
-  settings.style = id
+/** The design new posts start with: the last style, variation and font picked. */
+function designForNewPost() {
+  return resolveDesign(settings)
+}
+
+/**
+ * Sets one part of the open post's design (part: 'style' | 'variation' | 'font'),
+ * and makes the whole design the default for new posts.
+ */
+export function setDesign(part, id) {
+  if (!DESIGN_PARTS[part]?.[id]) return
+  const design = { ...resolveDesign(draft), [part]: id }
+  Object.assign(draft, design)
+  Object.assign(settings, design)
 }
 
 function safeLocalSet(key, value) {
@@ -220,7 +231,7 @@ async function persist({ force = false } = {}) {
     const record = plain(draft)
     record.updatedAt = new Date().toISOString()
 
-    const thumbKey = JSON.stringify([record.slides[0], record.slides.length, record.style, settings.theme, settings.handle])
+    const thumbKey = JSON.stringify([record.slides[0], record.slides.length, resolveDesign(record), settings.theme, settings.handle])
     if (thumbKey !== lastThumbKey) {
       lastThumb = await makeThumbnail(record, settings).catch(() => lastThumb)
       lastThumbKey = thumbKey
@@ -319,7 +330,7 @@ export async function newEmptyDraft() {
   loadIntoEditor(
     newDraft({
       topic: 'Untitled post',
-      style: settings.style,
+      ...designForNewPost(),
       slides: [newSlide('hook'), newSlide('story'), newSlide('story'), newSlide('story'), newSlide('question')],
     }),
   )
@@ -426,7 +437,7 @@ export async function generate({ topic, category }) {
       newDraft({
         topic: result.topic,
         category: result.category,
-        style: settings.style,
+        ...designForNewPost(),
         caption: result.caption,
         hashtags: result.hashtags,
         factCheck: result.factCheck,

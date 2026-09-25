@@ -16,7 +16,7 @@ export async function makeThumbnail(draft, settings) {
   const full = document.createElement('canvas')
   full.width = BRAND.width
   full.height = BRAND.height
-  renderSlide(full, { slide, index: 0, total: draft.slides.length, settings, image, style: draft.style })
+  renderSlide(full, { slide, index: 0, total: draft.slides.length, settings, image, design: draft })
 
   const small = document.createElement('canvas')
   small.width = THUMB_W

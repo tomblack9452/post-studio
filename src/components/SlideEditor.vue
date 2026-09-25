@@ -1,6 +1,7 @@
 <script setup>
 import { computed, ref } from 'vue'
 import { FLAGS, SLIDE_TYPES } from '../config/brand'
+import { STYLES, resolveDesign } from '../config/styles'
 import { countWords } from '../render/text'
 import { placeholderImage } from '../services/draftModel'
 import { slideWarnings } from '../services/validate'
@@ -37,6 +38,9 @@ function undoRegenerate() {
   if (target) Object.assign(target, undo.value.text)
   undo.value = null
 }
+
+// Only the Classic layout uses the per-slide Full-bleed / Split switch.
+const postStyle = computed(() => STYLES[resolveDesign(draft).style])
 
 const rules = computed(() => SLIDE_TYPES[props.slide.type] || SLIDE_TYPES.story)
 const headlineWords = computed(() => countWords(props.slide.headline))
@@ -120,10 +124,14 @@ function downscale(file, maxSide) {
           {{ t.label }}
         </button>
       </div>
-      <div class="seg">
+      <div v-if="postStyle.perSlideLayout" class="seg">
         <button :class="{ on: slide.layout === 'full' }" @click="slide.layout = 'full'">Full-bleed</button>
         <button :class="{ on: slide.layout === 'split' }" @click="slide.layout = 'split'">Split</button>
       </div>
+      <p v-else class="layout-note">
+        Layout comes from the {{ postStyle.name }} style.
+        <button class="linkish" @click="ui.panel = 'design'">Change in Design</button>
+      </p>
     </section>
 
     <section class="group">
@@ -221,6 +229,18 @@ function downscale(file, maxSide) {
 </template>
 
 <style scoped>
+.layout-note {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--muted);
+}
+.linkish {
+  all: unset;
+  cursor: pointer;
+  color: var(--accent);
+  text-decoration: underline;
+  margin-left: 4px;
+}
 .regen {
   display: grid;
   gap: 8px;

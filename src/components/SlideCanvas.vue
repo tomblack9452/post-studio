@@ -1,6 +1,7 @@
 <script setup>
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { BRAND } from '../config/brand'
+import { resolveDesign } from '../config/styles'
 import { draft, settings } from '../store'
 import { fontsReady } from '../render/fonts'
 import { loadSlideImage } from '../render/images'
@@ -10,8 +11,8 @@ const props = defineProps({
   slide: { type: Object, required: true },
   index: { type: Number, required: true },
   total: { type: Number, required: true },
-  // Post style to preview; defaults to the open post's style.
-  styleId: { type: String, default: '' },
+  // Design parts to preview instead of the open post's, e.g. { variation: 'camcorder' }.
+  design: { type: Object, default: null },
 })
 
 const canvas = ref(null)
@@ -42,14 +43,14 @@ async function draw() {
     total: props.total,
     settings,
     image,
-    style: props.styleId || draft.style,
+    design: { ...resolveDesign(draft), ...props.design },
   })
 }
 
 onMounted(scheduleDraw)
 onBeforeUnmount(() => cancelAnimationFrame(frame))
 watch(
-  () => [props.slide, props.index, props.total, props.styleId, draft.style, settings.theme, settings.handle],
+  () => [props.slide, props.index, props.total, props.design, draft.style, draft.variation, draft.font, settings.theme, settings.handle],
   scheduleDraw,
   { deep: true },
 )

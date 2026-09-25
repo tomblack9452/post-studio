@@ -15,7 +15,7 @@ function imageKey(img) {
  * Returns a canvas of size w x h containing `img` cover-fitted,
  * desaturated, contrast-graded, tinted and vignetted.
  * crop: { focusX, focusY, zoom } - focus 0..1 picks which part of the image stays in frame.
- * grade: BRAND.grade merged with the post style's overrides, plus shadowTint [r, g, b].
+ * grade: BRAND.grade merged with the post's variation overrides, plus shadowTint (and mono) as [r, g, b].
  */
 export function gradedPhoto(img, w, h, crop = {}, grade) {
   const fx = crop.focusX ?? 0.5
@@ -63,8 +63,9 @@ export function gradedPhoto(img, w, h, crop = {}, grade) {
 }
 
 function colourGrade(px, grade) {
-  const { saturation, contrast, brightness, blackLift, shadowTint, tintStrength } = grade
+  const { saturation, contrast, brightness, blackLift, shadowTint, tintStrength, mono } = grade
   const [tr, tg, tb] = shadowTint
+  const [mr, mg, mb] = mono ? mono.map((v) => v / 255) : [0, 0, 0]
   const lift = blackLift / 255
   for (let i = 0; i < px.length; i += 4) {
     let r = px[i] / 255
@@ -89,9 +90,20 @@ function colourGrade(px, grade) {
 
     // tint the shadows only
     const t = (1 - l) * (1 - l) * tintStrength
-    px[i] = (r * (1 - t) + (tr / 255) * t) * 255
-    px[i + 1] = (g * (1 - t) + (tg / 255) * t) * 255
-    px[i + 2] = (b * (1 - t) + (tb / 255) * t) * 255
+    r = r * (1 - t) + (tr / 255) * t
+    g = g * (1 - t) + (tg / 255) * t
+    b = b * (1 - t) + (tb / 255) * t
+
+    // single-hue photo (night vision): brightness mapped onto one colour
+    if (mono) {
+      const m = 0.2126 * r + 0.7152 * g + 0.0722 * b
+      r = m * mr
+      g = m * mg
+      b = m * mb
+    }
+    px[i] = r * 255
+    px[i + 1] = g * 255
+    px[i + 2] = b * 255
   }
 }
 

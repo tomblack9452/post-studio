@@ -2,7 +2,7 @@
 // Colours live in themes.js (colour schemes); typography and photo treatment per style in styles.js.
 
 import { DEFAULT_THEME_ID, THEME_PRESETS, themeColours } from './themes'
-import { DEFAULT_STYLE } from './styles'
+import { DEFAULT_DESIGN } from './styles'
 
 export const BRAND = {
   width: 1080,
@@ -45,7 +45,10 @@ export const DEFAULT_SETTINGS = {
   theme: themeColours(THEME_PRESETS[DEFAULT_THEME_ID]), // the colours in use
   themeId: DEFAULT_THEME_ID, // preset key or saved scheme id the colours came from
   customThemes: [], // saved schemes: { id, name, accent, bg, text, tint }
-  style: DEFAULT_STYLE, // post style for new posts (the last one picked)
+  // Design for new posts (the last ones picked): layout style, overlay variation, font.
+  style: DEFAULT_DESIGN.style,
+  variation: DEFAULT_DESIGN.variation,
+  font: DEFAULT_DESIGN.font,
   model: 'claude-sonnet-5',
   provider: 'api', // 'api' | 'pro'
   effort: 'low', // Claude Pro only: low | medium | high | xhigh | max
@@ -54,4 +57,4 @@ export const DEFAULT_SETTINGS = {
 }
 
 // Bump when a default above changes in a way that should override saved settings.
-export const SETTINGS_VERSION = 3
+export const SETTINGS_VERSION = 4

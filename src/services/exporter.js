@@ -22,7 +22,7 @@ export async function renderSlidePng(draft, index, settings) {
     typeof OffscreenCanvas === 'function'
       ? new OffscreenCanvas(BRAND.width, BRAND.height)
       : Object.assign(document.createElement('canvas'), { width: BRAND.width, height: BRAND.height })
-  renderSlide(canvas, { slide, index, total: draft.slides.length, settings, image, style: draft.style })
+  renderSlide(canvas, { slide, index, total: draft.slides.length, settings, image, design: draft })
   if (canvas.convertToBlob) return canvas.convertToBlob({ type: 'image/png' })
   return new Promise((resolve, reject) =>
     canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('Could not encode PNG'))), 'image/png'),

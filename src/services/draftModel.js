@@ -40,7 +40,10 @@ export function newDraft(patch = {}) {
     topic: '',
     category: '',
     status: 'draft', // 'draft' | 'ready' | 'posted'
-    style: 'documentary', // post style, see config/styles.js
+    // design: layout style, overlay variation and font (see config/styles.js)
+    style: 'classic',
+    variation: 'none',
+    font: 'condensed',
     postedAt: null,
     createdAt: now,
     updatedAt: now,

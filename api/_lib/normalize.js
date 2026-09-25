@@ -1,4 +1,4 @@
-import { LIMITS } from './prompts.js'
+import { LIMITS, MAX_HASHTAGS, MAX_SLIDES, MIN_SLIDES } from './prompts.js'
 
 // Tidies model output and reports rule breaks, so the editor can flag them.
 
@@ -20,8 +20,8 @@ export function normalizeSlide(raw, fallbackType = 'story') {
 
 export function normalizePost(raw) {
   let slides = (raw.slides || []).map((s) => normalizeSlide(s))
-  // Enforce the shape: hook first, question last, 5-8 slides.
-  if (slides.length > 8) slides = [...slides.slice(0, 7), slides[slides.length - 1]]
+  // Enforce the shape: hook first, question last, at most MAX_SLIDES.
+  if (slides.length > MAX_SLIDES) slides = [...slides.slice(0, MAX_SLIDES - 1), slides[slides.length - 1]]
   if (slides[0]) slides[0].type = 'hook'
   if (slides.length > 1) slides[slides.length - 1].type = 'question'
   for (const s of slides) s.layout = s.type === 'story' ? 'split' : 'full'
@@ -32,7 +32,7 @@ export function normalizePost(raw) {
         .map((h) => '#' + String(h).toLowerCase().replace(/^#+/, '').replace(/[^a-z0-9_]/g, ''))
         .filter((h) => h.length > 2),
     ),
-  ].slice(0, 30) // Instagram's hard limit
+  ].slice(0, MAX_HASHTAGS) // Instagram's limit
 
   const caption = [raw.caption_hook, ...(raw.caption_paragraphs || []), raw.comment_prompt]
     .map(tidy)
@@ -40,9 +40,9 @@ export function normalizePost(raw) {
     .join('\n\n')
 
   const warnings = []
-  if (slides.length < 5) warnings.push(`Only ${slides.length} slides were generated (aim for 5 to 8).`)
+  if (slides.length < MIN_SLIDES) warnings.push(`Only ${slides.length} slides were generated (aim for at least ${MIN_SLIDES}).`)
   slides.forEach((s, i) => warnings.push(...slideWarnings(s, i)))
-  if (hashtags.length < 15) warnings.push(`Only ${hashtags.length} hashtags (aim for 15 to 20).`)
+  if (hashtags.length < MAX_HASHTAGS) warnings.push(`Only ${hashtags.length} hashtags (Instagram allows ${MAX_HASHTAGS}).`)
 
   return {
     category: raw.category,

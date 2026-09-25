@@ -1,6 +1,7 @@
 <script setup>
 import { computed, ref } from 'vue'
 import { composeCaption, creditLine, IG_CAPTION_LIMIT } from '../services/exporter'
+import { MAX_HASHTAGS } from '../config/brand'
 import { draft } from '../store'
 
 const credits = computed(() => creditLine(draft))
@@ -50,11 +51,11 @@ async function copy(what) {
       <label class="field">
         <span class="label">
           Hashtags
-          <em :class="{ over: draft.hashtags.length < 15 || draft.hashtags.length > 20 }">
-            {{ draft.hashtags.length }} (aim for 15–20)
+          <em :class="{ over: draft.hashtags.length > MAX_HASHTAGS }">
+            {{ draft.hashtags.length }} / {{ MAX_HASHTAGS }} (Instagram's limit)
           </em>
         </span>
-        <textarea v-model.lazy="hashtagText" rows="5" spellcheck="false" />
+        <textarea v-model.lazy="hashtagText" rows="2" spellcheck="false" />
       </label>
       <div class="row">
         <button class="btn" @click="copy('tags')">{{ copied === 'tags' ? 'Copied' : 'Copy tags' }}</button>

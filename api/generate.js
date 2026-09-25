@@ -1,23 +1,27 @@
 import { generateJson } from './_lib/claude.js'
 import { fail, json } from './_lib/http.js'
 import { normalizePost, normalizeSlide, slideWarnings } from './_lib/normalize.js'
-import { CATEGORIES, LIMITS, POST_SCHEMA, SLIDE_SCHEMA, postRequest, slideRequest } from './_lib/prompts.js'
+import { CATEGORIES, LENGTHS, LIMITS, POST_SCHEMA, SLIDE_SCHEMA, postRequest, slideRequest } from './_lib/prompts.js'
 
-// POST /api/generate  { topic, category?, model? }  -> full carousel draft
+// POST /api/generate  { topic, category?, length?, model?, provider?, effort? }  -> full carousel draft
 export async function POST(request) {
   const body = await request.json().catch(() => ({}))
   const topic = String(body.topic || '').trim().slice(0, 200)
   const category = CATEGORIES.includes(body.category) ? body.category : ''
+  const length = LENGTHS[body.length] ? body.length : 'auto'
   if (!topic) return fail('Enter a topic')
 
   try {
     const { data, usage } = await generateJson({
-      user: postRequest(topic, category),
+      user: postRequest(topic, category, length),
+      maxTokens: 12000, // room for 20 slides plus caption
       schema: POST_SCHEMA,
       model: body.model,
+      provider: body.provider,
+      effort: body.effort,
     })
     const post = normalizePost(data)
-    await shortenOverLimitSlides(post, topic, body.model, usage)
+    await shortenOverLimitSlides(post, topic, body, usage)
     return json({ ...post, topic, usage })
   } catch (e) {
     return fail(e.message || 'Generation failed', e.status || 500)
@@ -25,7 +29,7 @@ export async function POST(request) {
 }
 
 // Models sometimes overshoot the word limits. Give each long slide one cheap rewrite.
-async function shortenOverLimitSlides(post, topic, model, usage) {
+async function shortenOverLimitSlides(post, topic, { model, provider, effort }, usage) {
   const long = post.slides.map((s, i) => [s, i]).filter(([s, i]) => slideWarnings(s, i).length)
   if (!long.length) return
 
@@ -43,6 +47,8 @@ async function shortenOverLimitSlides(post, topic, model, usage) {
           schema: SLIDE_SCHEMA,
           maxTokens: 1000,
           model,
+          provider,
+          effort,
         })
         const fixed = normalizeSlide(data.slide, slide.type)
         if (slideWarnings(fixed, index).length) return // still too long: keep original, the editor flags it

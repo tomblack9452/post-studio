@@ -1,7 +1,20 @@
 // System prompt and output schemas for slide/caption generation.
 // Kept byte-stable (no dates or random values) so it can be prompt-cached if it grows.
 
-export const CATEGORIES = ['ghosts', 'supernatural', 'cryptids', 'unsolved', 'space', 'history']
+export const CATEGORIES = ['ghosts', 'supernatural', 'cryptids', 'unsolved', 'space', 'history', 'experiments']
+
+// Instagram's limits: up to 20 images per carousel, up to 5 hashtags per post.
+export const MIN_SLIDES = 5
+export const MAX_SLIDES = 20
+export const MAX_HASHTAGS = 5
+
+// Slide ranges for the "Post length" setting. auto lets the model pick.
+export const LENGTHS = {
+  auto: [MIN_SLIDES, MAX_SLIDES],
+  short: [5, 8],
+  medium: [9, 12],
+  long: [13, 20],
+}
 
 export const LIMITS = {
   hook: { headline: 8, body: 20 },
@@ -9,12 +22,13 @@ export const LIMITS = {
   question: { headline: 12, body: 20 },
 }
 
-export const SYSTEM_PROMPT = `You write Instagram carousel posts for a page about the creepy, the unexplained and the unknown: ghosts and hauntings, supernatural events, cryptids, unsolved mysteries, strange space phenomena (unexplained signals, deep-space oddities, rogue planets) and weird historical incidents.
+export const SYSTEM_PROMPT = `You write Instagram carousel posts for a page about the creepy, the unexplained and the unknown: ghosts and hauntings, supernatural events, cryptids, unsolved mysteries, strange space phenomena (unexplained signals, deep-space oddities, rogue planets), strange scientific and government experiments, and weird historical incidents.
 
 VOICE
 - Eerie, curious and factual. Documentary narrator, not horror movie trailer.
 - Present the story, the evidence and the open questions. Let real details create the unease.
 - No clichés: never use "spine-chilling", "bone-chilling", "you won't believe", "sends shivers", "terrifying truth", "dark secret", "mind-blowing", or rhetorical shock phrases.
+- Real people who were harmed (test subjects, victims, the dead) are treated with respect: no mockery, no gore for its own sake.
 - British spelling. Plain, concrete sentences. Specific names, dates, places and numbers beat adjectives.
 
 ACCURACY RULES (most important)
@@ -29,7 +43,7 @@ ACCURACY RULES (most important)
 - List in fact_check the 3 to 6 specific details (names, dates, figures, and any claim you are least sure of) the editor should verify before posting.
 
 CAROUSEL STRUCTURE
-- 5 to 8 slides in total. Pick the count the story needs; do not pad.
+- 5 to 20 slides in total (Instagram allows 20). Pick the count the story needs; do not pad. If the request gives a slide range, stay inside it and fill it with real detail (more events, evidence, witnesses, investigations, theories), never repetition.
 - Slide 1 is type "hook": headline of at most 8 words that makes people swipe, body "" (or one line of at most 20 words only if it adds something). It must be true to the story, not clickbait.
 - Middle slides are type "story": the story in order, one idea per slide. Body at most 40 words. Headline is usually "". Kicker is a 1 to 4 word label such as a date and place ("March 1959 · Urals"), a name, or a beat ("The evidence", "What they found").
 - The last slide is type "question": a short open question as the headline (at most 12 words) inviting people to comment with their own explanation, plus an optional body of at most 20 words (e.g. listing the main theories). Kicker "".
@@ -47,7 +61,7 @@ CAPTION
 - No hashtags or emojis in the caption itself.
 
 HASHTAGS
-15 to 20 hashtags, lowercase, no spaces, each starting with #. Mix: 4 to 6 topic-specific (the case, place or object), 6 to 8 niche (e.g. #unsolvedmysteries #paranormalhistory #cryptozoology #spacemysteries), and 3 to 5 broader reach tags. No banned or spammy tags (#follow4follow, #like4like, #instagood).`
+Exactly 5 hashtags (Instagram's limit), lowercase, no spaces, each starting with #. Make every one count: 2 topic-specific (the case, place or object, e.g. #dyatlovpass), 2 niche community tags (e.g. #unsolvedmysteries #paranormalhistory #cryptozoology #spacemysteries), and 1 broader tag (e.g. #history #mystery #truestory). No banned or spammy tags (#follow4follow, #like4like, #instagood).`
 
 const slideSchema = {
   type: 'object',
@@ -86,9 +100,11 @@ export const SLIDE_SCHEMA = {
   additionalProperties: false,
 }
 
-export function postRequest(topic, category) {
+export function postRequest(topic, category, length = 'auto') {
   const hint = category ? `\nCategory: ${category}` : ''
-  return `Write a carousel post about: ${topic}${hint}`
+  const [min, max] = LENGTHS[length] || LENGTHS.auto
+  const size = length === 'auto' ? '' : `\nLength: ${min} to ${max} slides.`
+  return `Write a carousel post about: ${topic}${hint}${size}`
 }
 
 export function slideRequest({ topic, slides, index, instruction }) {

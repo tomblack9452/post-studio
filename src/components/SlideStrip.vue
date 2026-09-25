@@ -1,5 +1,6 @@
 <script setup>
 import { SLIDE_TYPES } from '../config/brand'
+import { MAX_SLIDES } from '../config/brand'
 import { addSlide, duplicateSlide, moveSlide, removeSlide } from '../store'
 import { slideWarnings } from '../services/validate'
 import SlideCanvas from './SlideCanvas.vue'
@@ -41,7 +42,14 @@ const act = (fn, ...args) => (selected.value = fn(...args))
         >
           ↓
         </button>
-        <button class="btn icon" title="Duplicate" @click="act(duplicateSlide, selected)">⧉</button>
+        <button
+          class="btn icon"
+          title="Duplicate"
+          :disabled="props.slides.length >= MAX_SLIDES"
+          @click="act(duplicateSlide, selected)"
+        >
+          ⧉
+        </button>
         <button
           class="btn icon danger"
           title="Delete slide"
@@ -51,12 +59,24 @@ const act = (fn, ...args) => (selected.value = fn(...args))
           ✕
         </button>
       </div>
-      <button class="btn" @click="act(addSlide, selected, 'story')">+ Add slide</button>
+      <button
+        class="btn"
+        :disabled="props.slides.length >= MAX_SLIDES"
+        :title="props.slides.length >= MAX_SLIDES ? `Instagram allows ${MAX_SLIDES} slides` : ''"
+        @click="act(addSlide, selected, 'story')"
+      >
+        + Add slide <span class="count">{{ props.slides.length }}/{{ MAX_SLIDES }}</span>
+      </button>
     </div>
   </aside>
 </template>
 
 <style scoped>
+.count {
+  opacity: 0.55;
+  font-size: 12px;
+  margin-left: 4px;
+}
 .strip {
   display: flex;
   flex-direction: column;

@@ -1,5 +1,5 @@
 import JSZip from 'jszip'
-import { BRAND } from '../config/brand'
+import { BRAND, MAX_HASHTAGS, MAX_SLIDES } from '../config/brand'
 import { fontsReady } from '../render/fonts'
 import { loadSlideImage } from '../render/images'
 import { renderSlide } from '../render/slideRenderer'
@@ -22,7 +22,7 @@ export async function renderSlidePng(draft, index, settings) {
     typeof OffscreenCanvas === 'function'
       ? new OffscreenCanvas(BRAND.width, BRAND.height)
       : Object.assign(document.createElement('canvas'), { width: BRAND.width, height: BRAND.height })
-  renderSlide(canvas, { slide, index, total: draft.slides.length, settings, image })
+  renderSlide(canvas, { slide, index, total: draft.slides.length, settings, image, style: draft.style })
   if (canvas.convertToBlob) return canvas.convertToBlob({ type: 'image/png' })
   return new Promise((resolve, reject) =>
     canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('Could not encode PNG'))), 'image/png'),
@@ -86,6 +86,8 @@ export function exportIssues(draft) {
   const length = composeCaption(draft).length
   if (length > IG_CAPTION_LIMIT) issues.push(`Caption is ${length} characters (Instagram allows ${IG_CAPTION_LIMIT}).`)
   if (!draft.caption.trim()) issues.push('The caption is empty.')
+  if (draft.slides.length > MAX_SLIDES) issues.push(`There are ${draft.slides.length} slides (Instagram allows ${MAX_SLIDES}).`)
+  if (draft.hashtags.length > MAX_HASHTAGS) issues.push(`There are ${draft.hashtags.length} hashtags (Instagram allows ${MAX_HASHTAGS}).`)
   return issues
 }
 
